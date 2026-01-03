@@ -30,3 +30,12 @@
 *.exe
 *.out
 *.app
+
+# Virtual environment
+.venv/
+
+.pytest_cache/
+__pycache__/
+
+/temp_test_output
+/art_retrieval.egg-info

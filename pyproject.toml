@@ -1,0 +1,23 @@
+[project]
+name = "art-retrieval"
+version = "0.1.0"
+description = "todo"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "matplotlib>=3.10.8",
+    "requests>=2.32.5",
+    "Pillow>=10.0.0",
+    "pytest>=9.0.2",
+    "torch>=2.9.1",
+    "transformers>=4.57.3",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["backend*"]
+exclude = ["frontend*"]
