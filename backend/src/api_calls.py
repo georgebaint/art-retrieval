@@ -1,25 +1,8 @@
 import requests
 from PIL import Image
 import matplotlib
-matplotlib.use("Agg")  # avoids matplotlib backend issues in test runs
+# matplotlib.use("Agg")  # avoids matplotlib backend issues in test runs
 import matplotlib.pyplot as plt
-
-SEARCH_URL = "https://api.artic.edu/api/v1/artworks/search"
-IIIF = "https://www.artic.edu/iiif/2/{image_id}/full/843,/0/default.jpg"  # recommended pattern
-
-def fetch_public_domain_artworks(limit=2):
-	# Fetch more than we need, then filter down, because some hits can still have null image_id
-	params = {
-		"query[term][is_public_domain]": "true",
-		"limit": max(10, limit * 5),
-		"fields": "id,title,image_id,artist_display,date_display,is_public_domain",
-	}
-	resp = requests.get(SEARCH_URL, params=params, timeout=20)
-	resp.raise_for_status()
-	data = resp.json().get("data", [])
-	data = [d for d in data if d.get("image_id")]
-	return data[:limit]
-
 import time
 import requests
 
@@ -34,32 +17,40 @@ SESSION.headers.update({
     "Accept-Language": "en-US,en;q=0.9",
     "Referer": "https://www.artic.edu/",
 })
+SEARCH_URL = "https://api.artic.edu/api/v1/artworks/search"
+IIIF = "https://www.artic.edu/iiif/2/{image_id}/full/843,/0/default.jpg"  # recommended pattern on their docs
+
+def fetch_public_domain_artworks(limit=2):
+	# Fetch more than we need, then filter down, because some hits can still have null image_id
+	params = {
+		"query[term][is_public_domain]": "true",
+		"limit": max(10, limit * 5),
+		"fields": "id,title,image_id,artist_display,date_display,is_public_domain",
+	}
+	resp = requests.get(SEARCH_URL, params=params, timeout=20)
+	resp.raise_for_status()
+	data = resp.json().get("data", [])
+	data = [d for d in data if d.get("image_id")]
+	return data[:limit]
+
+
 
 def download_image(image_id: str, out_path: str):
     url = IIIF.format(image_id=image_id)
     print(f"url = {url}")
 
-    # optional warm-up to get whatever cookies the edge wants
-    SESSION.get("https://www.artic.edu/", timeout=20)
+    SESSION.get("https://www.artic.edu/", timeout=20) # optional warm-up to get whatever cookies the edge wants
 
-    # time.sleep(1.0)  # be polite
+    # time.sleep(1.0)
     resp = SESSION.get(url, timeout=20)
 
-    if resp.status_code == 403:
-        print("403 body (first 300 chars):", resp.text[:300])  # now you'll actually see it
+    if resp.status_code == 403: # Error 403 Forbidden (happens when not using session)
+        print("403 body (first 300 chars):", resp.text[:300]) # debug info
     resp.raise_for_status()
 
     with open(out_path, "wb") as f:
         f.write(resp.content)
     return out_path
-
-# def download_image(image_id: str, out_path: str):
-#     url = IIIF.format(image_id=image_id)
-#     resp = requests.get(url, headers={"AIC-User-Agent": AIC_UA}, timeout=20)
-#     resp.raise_for_status()
-#     with open(out_path, "wb") as f:
-#         f.write(resp.content)
-#     return out_path
 
 def plot_image(path: str, out_png: str):
 	img = Image.open(path)
