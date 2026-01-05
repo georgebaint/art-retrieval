@@ -48,26 +48,45 @@ print(f"Loaded {len(artworks_iter)} artworks for embedding.")
 cfg = ImageEmbeddingConfig()
 model_bundle = load_image_embedding_model(cfg)
 
-# 3. Define how to save embeddings
-def save_text_embedding(artwork_id, embedding, embedding_text):
-    # TODO: replace with DB insert / write to file
-    pass
+# 3. Create DB collection for embeddings
+import chromadb
 
-def save_image_embedding(artwork_id, embedding):
-    # TODO: replace with DB insert / write to file
-    pass
+# client = chromadb.Client()
+client = chromadb.PersistentClient(path="data/chromadb/test1")
+
+# client = chromadb.PersistentClient(path="data/chromadb/test1") 
+# artworks_text = client.get_collection("artworks_text")
+
+empty_text_collection = client.get_or_create_collection(
+    name="artwork_text_embeddings"
+)
+
+empty_image_collection = client.get_or_create_collection(
+    name="artwork_image_embeddings"
+)
 
 # 4. Generate text embeddings
-generate_text_embeddings_for_artworks(
+text_collection = generate_text_embeddings_for_artworks(
     artworks=artworks_iter,
     model_bundle=model_bundle,
-    save_fn=save_text_embedding,
+    collection=empty_text_collection,
 )
 
 # 5. Generate image embeddings
-generate_image_embeddings_for_artworks(
+image_collection = generate_image_embeddings_for_artworks(
     artworks=artworks_iter,
     model_bundle=model_bundle,
     iiif_base_url=cfg.iiif_base_url,
-    save_fn=save_image_embedding,
+    collection=empty_image_collection,
 )
+
+print("Embedding process completed.")
+
+
+# print(image_collection.peek())
+# results = text_collection.query(
+#     query_texts=["which paintings show the interior of a church?"],
+#     n_results=2
+# )
+
+print(results)

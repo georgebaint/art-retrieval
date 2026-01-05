@@ -15,10 +15,11 @@ from artic import create_artic_session
 def generate_text_embeddings_for_artworks(
     artworks: Iterable[Dict[str, Any]],
     model_bundle: Any,
-    save_fn: Callable[[int, List[float], str], None],
+    # save_fn: Callable[[int, List[float], str, Any], None],
+    collection: Any,
     *,
     progress_every: int = 100,
-) -> None:
+) -> Any:
     """
     Iterate over artworks and generate text embeddings (SigLIP text tower).
 
@@ -54,7 +55,12 @@ def generate_text_embeddings_for_artworks(
             continue
 
         try:
-            save_fn(artwork_id, embedding, embedding_text)
+            collection.add(
+                ids=[str(artwork_id)],
+                documents=[embedding_text],
+                embeddings=[embedding],
+                metadatas=[{"type": "text"}],
+            )
             saved += 1
         except Exception as e:
             print(f"[text] Error saving embedding for artwork {artwork_id}: {e}")
@@ -65,16 +71,18 @@ def generate_text_embeddings_for_artworks(
 
     print(f"[text] DONE: processed={count}, saved={saved}")
 
+    return collection
 
 def generate_image_embeddings_for_artworks(
     artworks: Iterable[Dict[str, Any]],
     model_bundle: Any,
     iiif_base_url: str,
-    save_fn: Callable[[int, List[float]], None],
+    collection: Any,
+    # save_fn: Callable[[int, List[float], Any], None],
     *,
     progress_every: int = 50,
     session: Optional[requests.Session] = None,
-) -> None:
+) -> Any:
     """
     Iterate over artworks and generate image embeddings (SigLIP image tower).
 
@@ -124,7 +132,12 @@ def generate_image_embeddings_for_artworks(
                 continue
 
             try:
-                save_fn(artwork_id, embedding)
+                collection.add(
+                    ids=[str(artwork_id)],
+                    embeddings=[embedding],
+                    metadatas=[{"type": "image"}],
+                )
+
                 saved += 1
             except Exception as e:
                 print(f"[image] Error saving embedding for artwork {artwork_id}: {e}")
@@ -138,3 +151,5 @@ def generate_image_embeddings_for_artworks(
             session.close()
 
     print(f"[image] DONE: processed={count}, saved={saved}")
+
+    return collection
