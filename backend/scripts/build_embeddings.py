@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from pathlib import Path
 import json
 
+from src.embeddings.text_embedder import TextEmbeddingConfig, load_text_embedding_model
 from src.embeddings.image_embedder import ImageEmbeddingConfig, load_image_embedding_model
 from src.embeddings.pipeline import (
     generate_text_embeddings_for_artworks,
@@ -44,18 +45,21 @@ def load_artworks(artworks_dir_path: str):
 
 artworks_iter = list(load_artworks(r"C:\Users\30698\Documents\art_project\api-data\json\artworks"))  # Directory with 10 JSON files
 print(f"Loaded {len(artworks_iter)} artworks for embedding.")
-# 2. Load SigLIP model once
-cfg = ImageEmbeddingConfig()
-model_bundle = load_image_embedding_model(cfg)
+# 2. Load models
+cfg_text = TextEmbeddingConfig()
+model_bundle_text = load_text_embedding_model(cfg_text)
+
+cfg_image = ImageEmbeddingConfig()
+model_bundle_image = load_image_embedding_model(cfg_image)
 
 # 3. Create DB collection for embeddings
 import chromadb
 
 # client = chromadb.Client()
-client = chromadb.PersistentClient(path="data/chromadb/test1")
+client = chromadb.PersistentClient(path="data/chromadb/test2")
 
 # client = chromadb.PersistentClient(path="data/chromadb/test1") 
-# artworks_text = client.get_collection("artworks_text")
+# artworks_text = client.get_collection("artworks_text_embeddings")
 
 empty_text_collection = client.get_or_create_collection(
     name="artwork_text_embeddings"
@@ -68,15 +72,15 @@ empty_image_collection = client.get_or_create_collection(
 # 4. Generate text embeddings
 text_collection = generate_text_embeddings_for_artworks(
     artworks=artworks_iter,
-    model_bundle=model_bundle,
+    model_bundle=model_bundle_text,
     collection=empty_text_collection,
 )
 
 # 5. Generate image embeddings
 image_collection = generate_image_embeddings_for_artworks(
     artworks=artworks_iter,
-    model_bundle=model_bundle,
-    iiif_base_url=cfg.iiif_base_url,
+    model_bundle=model_bundle_image,
+    iiif_base_url=cfg_image.iiif_base_url,
     collection=empty_image_collection,
 )
 
@@ -89,4 +93,4 @@ print("Embedding process completed.")
 #     n_results=2
 # )
 
-print(results)
+# print(results)

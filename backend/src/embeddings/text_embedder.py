@@ -1,74 +1,57 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple, Optional
-from transformers import AutoModel, AutoProcessor
-import torch
-import torch.nn.functional as F
+from typing import Any, Dict, List, Tuple
 
-# Default checkpoint – adjust if needed
-DEFAULT_CKPT = "google/siglip2-base-patch16-naflex"
+from sentence_transformers import SentenceTransformer
+
+
+DEFAULT_MODEL_NAME = "BAAI/bge-base-en-v1.5"
 
 
 @dataclass
 class TextEmbeddingConfig:
     """
-    Configuration for the text embedding model.
+    Configuration for the text embedding model (BGE-M3).
     """
-    model_ckpt: str = DEFAULT_CKPT
-    device: str = "cuda" if torch.cuda.is_available() else "cpu"
-    iiif_base_url: str = "https://www.artic.edu/iiif/2"
+    model_name: str = DEFAULT_MODEL_NAME
     # Not used yet, but you might want batching later
     batch_size: int = 16
 
 
 def load_text_embedding_model(
     config: TextEmbeddingConfig,
-) -> tuple[AutoModel, AutoProcessor, torch.device]:
+) -> SentenceTransformer:
     """
-    Load and return the text embedding model, processor and device.
+    Load and return the BGE-M3 text embedding model.
 
     Returns
     -------
-    (model, processor, device)
-        model : AutoModel
-            The vision (SigLIP) model.
-        processor : AutoProcessor
-            Preprocessor for images.
-        device : torch.device
-            Device the model is on.
+    SentenceTransformer
+        The model used to compute text embeddings.
     """
-    device = torch.device(config.device)
-
-    model = AutoModel.from_pretrained(config.model_ckpt).to(device).eval()
-    processor = AutoProcessor.from_pretrained(config.model_ckpt)
-
-    return model, processor, device
+    # SentenceTransformer will handle device selection internally
+    model = SentenceTransformer(config.model_name)
+    return model
 
 
 def build_embedding_text(artwork: Dict[str, Any]) -> str:
+    """
+    Build a caption-like text representation of an artwork to embed with BGE-M3.
+    """
     title = artwork.get("title") or ""
     artist = artwork.get("artist_title") or ""
     date = artwork.get("date_display") or ""
-    place = artwork.get("place_of_origin") or ""
     medium = artwork.get("medium_display") or ""
     subject_titles = artwork.get("subject_titles") or []
     classification_titles = artwork.get("classification_titles") or []
     term_titles = artwork.get("term_titles") or []
     material_titles = artwork.get("material_titles") or []
 
-    # Basic caption-like sentence
-    bits = []
+    bits: List[str] = []
 
     if title:
         bits.append(title)
 
-    # Simple one-line description
-    desc_parts = []
-
-    # subject / type
-    # Try to pick one or two meaningful subject or classification tags
-    subjects = [t for t in subject_titles if t] or [t for t in classification_titles if t]
-    if subjects:
-        desc_parts.append(subjects[0])
+    desc_parts: List[str] = []
 
     if medium:
         desc_parts.append(medium)
@@ -78,9 +61,6 @@ def build_embedding_text(artwork: Dict[str, Any]) -> str:
 
     if date:
         desc_parts.append(f"from {date}")
-
-    if place:
-        desc_parts.append(f"({place})")
 
     if desc_parts:
         bits.append(" ".join(desc_parts))
@@ -99,37 +79,51 @@ def build_embedding_text(artwork: Dict[str, Any]) -> str:
     if not text:
         text = f"Artwork {artwork.get('id', '')}"
 
-    print(text , "\n")
+    # Debug (optional – remove if too spammy)
+    # print(text, "\n")
+
     return text
 
 
 def embed_text(
     text: str,
-    model: AutoModel,
-    processor: AutoProcessor,
-    device: torch.device,
+    model: SentenceTransformer,
 ) -> List[float]:
-    if not text.strip():
+    """
+    Compute a BGE-M3 embedding vector for a single piece of text.
+
+    NOTE: For BGE-M3, they recommend different prompts for
+    queries vs documents. Here we treat artwork descriptions as
+    'documents', so we prepend the document prompt.
+
+    For queries, you should use a separate function with the query prompt.
+    """
+    text = text.strip()
+    if not text:
         return []
 
-    inputs = processor(
-        text=[text],
-        return_tensors="pt",
-    ).to(device)
+    # BGE-M3 doc prompt (recommended pattern)
+    doc_text = f"Represent this document for retrieval: {text}"
 
-    with torch.no_grad():
-        t = model.get_text_features(**inputs)  # [1, D]
-
-    t = F.normalize(t, dim=-1)
-    return t[0].detach().cpu().tolist()
+    emb = model.encode(
+        doc_text,
+        normalize_embeddings=True,
+    )
+    return emb.tolist()
 
 
 def embed_artwork_text(
-    model_bundle: Tuple[AutoModel, AutoProcessor, torch.device],
+    model: SentenceTransformer,
     artwork: Dict[str, Any],
 ) -> Tuple[int, List[float], str]:
-    model, processor, device = model_bundle
+    """
+    Build embedding text for an artwork and embed it with BGE-M3.
+
+    Returns
+    -------
+    (artwork_id, embedding, embedding_text)
+    """
     artwork_id = artwork.get("id")
     embedding_text = build_embedding_text(artwork)
-    embedding = embed_text(embedding_text, model, processor, device)
+    embedding = embed_text(embedding_text, model)
     return artwork_id, embedding, embedding_text
