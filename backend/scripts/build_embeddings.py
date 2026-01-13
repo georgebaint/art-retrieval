@@ -1,96 +1,148 @@
 import sys
 from pathlib import Path
-
-# Add the backend directory to sys.path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from pathlib import Path
 import json
 
-from src.embeddings.text_embedder import TextEmbeddingConfig, load_text_embedding_model
-from src.embeddings.image_embedder import ImageEmbeddingConfig, load_image_embedding_model
-from src.embeddings.pipeline import (
-    generate_text_embeddings_for_artworks,
-    generate_image_embeddings_for_artworks,
-)
+from tqdm import tqdm
+import chromadb
 
-# 1. Load artworks from your normalized file
+# Add the backend/src directory to sys.path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from src.embeddings.text_embedder import (
+    TextEmbeddingConfig,
+    load_text_embedding_model,
+    embed_artwork_text,
+)
+from src.embeddings.image_embedder import (
+    ImageEmbeddingConfig,
+    load_image_embedding_model,
+    embed_artwork_image,
+)
+from src.artic import create_artic_session
+
+CLIENT_SAVE_PATH = "data/chromadb/test_full1"
+ARTWORKS_DIR_PATH = r"C:\Users\30698\Documents\art_project\full-api\artworks"
+
+
 def load_artworks(artworks_dir_path: str):
+    """
+    Stream artworks from a directory of JSON / JSONL files.
+    """
     artworks_dir = Path(artworks_dir_path)
     for json_path in artworks_dir.glob("*.json"):
         with open(json_path, "r", encoding="utf-8") as f:
-            print(f"Loading artworks from {json_path}...")
             try:
-                # Try loading as JSON array
                 data = json.load(f)
                 if isinstance(data, list):
                     for artwork in data:
                         yield artwork
                 else:
-                    # If single object, yield it
                     yield data
             except json.JSONDecodeError:
-                # If not valid JSON, try as JSONL
                 f.seek(0)
                 for line_num, line in enumerate(f, 1):
                     line = line.strip()
-                    if line:
-                        try:
-                            obj = json.loads(line)
-                            artwork = obj.get("data", obj)
-                            yield artwork
-                        except json.JSONDecodeError as e:
-                            print(f"Error parsing line {line_num} in {json_path}: {e}")
-                            continue
-
-artworks_iter = list(load_artworks(r"C:\Users\30698\Documents\art_project\api-data\json\artworks"))  # Directory with 10 JSON files
-print(f"Loaded {len(artworks_iter)} artworks for embedding.")
-# 2. Load models
-cfg_text = TextEmbeddingConfig()
-model_bundle_text = load_text_embedding_model(cfg_text)
-
-cfg_image = ImageEmbeddingConfig()
-model_bundle_image = load_image_embedding_model(cfg_image)
-
-# 3. Create DB collection for embeddings
-import chromadb
-
-# client = chromadb.Client()
-client = chromadb.PersistentClient(path="data/chromadb/test2")
-
-# client = chromadb.PersistentClient(path="data/chromadb/test1") 
-# artworks_text = client.get_collection("artworks_text_embeddings")
-
-empty_text_collection = client.get_or_create_collection(
-    name="artwork_text_embeddings"
-)
-
-empty_image_collection = client.get_or_create_collection(
-    name="artwork_image_embeddings"
-)
-
-# 4. Generate text embeddings
-text_collection = generate_text_embeddings_for_artworks(
-    artworks=artworks_iter,
-    model_bundle=model_bundle_text,
-    collection=empty_text_collection,
-)
-
-# 5. Generate image embeddings
-image_collection = generate_image_embeddings_for_artworks(
-    artworks=artworks_iter,
-    model_bundle=model_bundle_image,
-    iiif_base_url=cfg_image.iiif_base_url,
-    collection=empty_image_collection,
-)
-
-print("Embedding process completed.")
+                    if not line:
+                        continue
+                    try:
+                        obj = json.loads(line)
+                        artwork = obj.get("data", obj)
+                        yield artwork
+                    except json.JSONDecodeError as e:
+                        print(f"Error parsing line {line_num} in {json_path}: {e}")
+                        continue
 
 
-# print(image_collection.peek())
-# results = text_collection.query(
-#     query_texts=["which paintings show the interior of a church?"],
-#     n_results=2
-# )
+def main():
+    # 1. Load models once
+    cfg_text = TextEmbeddingConfig()
+    text_model = load_text_embedding_model(cfg_text)
 
-# print(results)
+    cfg_image = ImageEmbeddingConfig()
+    image_model_bundle = load_image_embedding_model(cfg_image)
+
+    # 2. Create / get Chroma collections
+    client = chromadb.PersistentClient(path=CLIENT_SAVE_PATH)
+
+    text_collection = client.get_or_create_collection(
+        name="artwork_text_embeddings"
+    )
+    image_collection = client.get_or_create_collection(
+        name="artwork_image_embeddings"
+    )
+
+    # 3. Shared HTTP session for image downloads
+    session = create_artic_session()
+
+    # 4. Loop over artworks once and do both text + image embeddings
+    for artwork in tqdm(load_artworks(ARTWORKS_DIR_PATH),
+                        desc="Embedding artworks",
+                        unit="artwork"):
+        art_id = artwork.get("id")
+
+        # --- HOTFIX: require image_id and sanitize title/artist ---
+        image_id = artwork.get("image_id")
+        if image_id is None:
+            # No image -> skip both text & image embeddings for this artwork
+            continue
+
+        title = artwork.get("title") or "Unknown title"
+        artist_title = artwork.get("artist_title") or "Unknown artist"
+
+        meta = {
+            "image_id": image_id,         # guaranteed non-None
+            "title": title,               # guaranteed non-None str
+            "artist_title": artist_title, # guaranteed non-None str
+        }
+        # -----------------------------------------------------------
+
+        # Text embedding (BGE or SigLIP-text)
+        try:
+            embedding_text_vec, embedding_text = embed_artwork_text(
+                text_model,
+                artwork,
+            )
+        except Exception as e:
+            print(f"[text] Error embedding artwork {art_id}: {e}")
+            embedding_text_vec = None
+
+        if embedding_text_vec:
+            try:
+                text_collection.add(
+                    ids=[str(art_id)],
+                    documents=[embedding_text],
+                    embeddings=[embedding_text_vec],
+                    metadatas=[meta],   # uses sanitized meta
+                )
+            except Exception as e:
+                print(f"[text] Error saving embedding for artwork {art_id}: {e}")
+
+        # Image embedding (SigLIP image tower)
+        try:
+            embedding_img = embed_artwork_image(
+                image_model_bundle,
+                artwork,
+                iiif_base_url=cfg_image.iiif_base_url,
+                session=session,
+            )
+        except Exception as e:
+            print(f"[image] Error embedding artwork {art_id}: {e}")
+            embedding_img = None
+
+        if embedding_img:
+            try:
+                image_collection.add(
+                    ids=[str(art_id)],
+                    embeddings=[embedding_img],
+                    metadatas=[meta],   # same sanitized meta
+                )
+            except Exception as e:
+                print(f"[image] Error saving embedding for artwork {art_id}: {e}")
+                continue
+
+    session.close()
+    print("Embedding process completed.")
+
+
+if __name__ == "__main__":
+    main()

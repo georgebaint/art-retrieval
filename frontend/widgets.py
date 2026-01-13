@@ -131,11 +131,10 @@ class ToggleGroup:
             text_rect = txt_surface.get_rect(center=r.center)
             surface.blit(txt_surface, text_rect)
 
-
 class PaintingCard:
     """
     Placeholder "card" for an artwork.
-    Just draws a colored box with title/artist text.
+    Optionally draws a Pygame surface as thumbnail.
     """
     def __init__(
         self,
@@ -143,24 +142,32 @@ class PaintingCard:
         title: str,
         subtitle: str,
         mode_label: str = "",
+        image_surface: Optional[pygame.Surface] = None,
     ):
         self.rect = rect
         self.title = title
         self.subtitle = subtitle
         self.mode_label = mode_label
+        self.image_surface = image_surface
 
     def draw(self, surface: pygame.Surface, font_title, font_sub) -> None:
         pygame.draw.rect(surface, (245, 245, 245), self.rect)
         pygame.draw.rect(surface, (200, 200, 200), self.rect, 1)
 
-        # Fake thumbnail area
+        # Thumbnail area
         thumb_rect = pygame.Rect(
             self.rect.x + 8,
             self.rect.y + 8,
             self.rect.width - 16,
             int(self.rect.height * 0.55),
         )
-        pygame.draw.rect(surface, (210, 210, 210), thumb_rect)
+
+        if self.image_surface is not None:
+            # Scale to fit thumbnail area
+            thumb_img = pygame.transform.smoothscale(self.image_surface, thumb_rect.size)
+            surface.blit(thumb_img, thumb_rect)
+        else:
+            pygame.draw.rect(surface, (210, 210, 210), thumb_rect)
 
         # Title
         title_surface = font_title.render(self.title, True, (20, 20, 20))

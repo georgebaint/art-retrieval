@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
-
+import torch
 from sentence_transformers import SentenceTransformer
 
 
@@ -13,9 +13,7 @@ class TextEmbeddingConfig:
     Configuration for the text embedding model (BGE-M3).
     """
     model_name: str = DEFAULT_MODEL_NAME
-    # Not used yet, but you might want batching later
-    batch_size: int = 16
-
+    device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
 def load_text_embedding_model(
     config: TextEmbeddingConfig,
@@ -29,7 +27,7 @@ def load_text_embedding_model(
         The model used to compute text embeddings.
     """
     # SentenceTransformer will handle device selection internally
-    model = SentenceTransformer(config.model_name)
+    model = SentenceTransformer(config.model_name, device=config.device)
     return model
 
 
@@ -123,7 +121,7 @@ def embed_artwork_text(
     -------
     (artwork_id, embedding, embedding_text)
     """
-    artwork_id = artwork.get("id")
+
     embedding_text = build_embedding_text(artwork)
     embedding = embed_text(embedding_text, model)
-    return artwork_id, embedding, embedding_text
+    return embedding, embedding_text
