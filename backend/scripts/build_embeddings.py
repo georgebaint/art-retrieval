@@ -5,7 +5,6 @@ import json
 from tqdm import tqdm
 import chromadb
 
-# Add the backend/src directory to sys.path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.embeddings.text_embedder import (
@@ -54,14 +53,14 @@ def load_artworks(artworks_dir_path: str):
 
 
 def main():
-    # 1. Load models once
+    # 1.load models
     cfg_text = TextEmbeddingConfig()
     text_model = load_text_embedding_model(cfg_text)
 
     cfg_image = ImageEmbeddingConfig()
     image_model_bundle = load_image_embedding_model(cfg_image)
 
-    # 2. Create / get Chroma collections
+    # 2.get Chroma collections
     client = chromadb.PersistentClient(path=CLIENT_SAVE_PATH)
 
     text_collection = client.get_or_create_collection(
@@ -71,16 +70,15 @@ def main():
         name="artwork_image_embeddings"
     )
 
-    # 3. Shared HTTP session for image downloads
+    # 3.HTTP session for image downloads
     session = create_artic_session()
 
-    # 4. Loop over artworks once and do both text + image embeddings
+    # 4.do both text + image embeddings
     for artwork in tqdm(load_artworks(ARTWORKS_DIR_PATH),
                         desc="Embedding artworks",
                         unit="artwork"):
         art_id = artwork.get("id")
 
-        # --- HOTFIX: require image_id and sanitize title/artist ---
         image_id = artwork.get("image_id")
         if image_id is None:
             # No image -> skip both text & image embeddings for this artwork
@@ -96,7 +94,7 @@ def main():
         }
         # -----------------------------------------------------------
 
-        # Text embedding (BGE or SigLIP-text)
+        # Text embedding
         try:
             embedding_text_vec, embedding_text = embed_artwork_text(
                 text_model,
@@ -112,12 +110,12 @@ def main():
                     ids=[str(art_id)],
                     documents=[embedding_text],
                     embeddings=[embedding_text_vec],
-                    metadatas=[meta],   # uses sanitized meta
+                    metadatas=[meta],   
                 )
             except Exception as e:
                 print(f"[text] Error saving embedding for artwork {art_id}: {e}")
 
-        # Image embedding (SigLIP image tower)
+        # Image embedding
         try:
             embedding_img = embed_artwork_image(
                 image_model_bundle,
@@ -134,7 +132,7 @@ def main():
                 image_collection.add(
                     ids=[str(art_id)],
                     embeddings=[embedding_img],
-                    metadatas=[meta],   # same sanitized meta
+                    metadatas=[meta],  
                 )
             except Exception as e:
                 print(f"[image] Error saving embedding for artwork {art_id}: {e}")

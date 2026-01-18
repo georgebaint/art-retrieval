@@ -4,7 +4,6 @@ from typing import Dict, Optional
 
 import pygame
 
-# Add project root to sys.path for imports
 ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
@@ -49,13 +48,9 @@ def search_backend(
     if mode == "text":
         backend_mode = "text"
     elif mode == "vision":
-        backend_mode = "vision"
-        # For now, vision mode requires an image query; you haven't wired that yet.
-        # So you can either disable vision in the UI or treat it as text.
-        # For now we just fallback:
+        # backend_mode = "vision" #TODO: vision not implemented yet
         backend_mode = "text"
     elif mode == "hybrid":
-        # Hybrid not implemented yet; fallback to text retrieval
         backend_mode = "hybrid"
     else:
         backend_mode = "text"
@@ -74,7 +69,7 @@ def search_backend(
             or meta.get("artist_display")
             or "Unknown artist"
         )
-        image_id = meta.get("image_id")  # must exist in your embedding pipeline
+        image_id = meta.get("image_id")  # must exist in embedding pipeline
 
         artworks.append(
             {
@@ -216,7 +211,7 @@ def main():
         for card in cards:
             card.draw(screen, font_title, font_sub)
 
-        footer_text = "Press Enter to search. Vision/Hybrid modes are partially wired; backend still reuses text for now."
+        footer_text = "Press Enter to search. Vision mode not implemented yet."
         footer_surface = font_sub.render(footer_text, True, (160, 160, 160))
         footer_rect = footer_surface.get_rect()
         footer_rect.bottomleft = (20, WINDOW_HEIGHT - 10)

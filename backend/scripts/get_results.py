@@ -1,7 +1,6 @@
 import sys
 from pathlib import Path
 
-# Add the backend directory to sys.path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import chromadb
@@ -32,7 +31,7 @@ def get_results(query_text, query_image=None, mode="text", n_results=6):
         ).to(device)
 
         with torch.no_grad():
-            v = image_model.get_image_features(**inputs)  # <-- image features
+            v = image_model.get_image_features(**inputs)
         v = F.normalize(v, dim=-1)
         query_embedding = v[0].detach().cpu().tolist()
         collection = artworks_collection_image
@@ -47,7 +46,7 @@ def get_results(query_text, query_image=None, mode="text", n_results=6):
         ).to(device)
 
         with torch.no_grad():
-            v = image_model.get_text_features(**inputs)  # <-- text features
+            v = image_model.get_text_features(**inputs)
         v = F.normalize(v, dim=-1)
         query_embedding = v[0].detach().cpu().tolist()
         collection = artworks_collection_image

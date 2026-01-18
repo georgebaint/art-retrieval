@@ -21,7 +21,6 @@ SEARCH_URL = "https://api.artic.edu/api/v1/artworks/search"
 IIIF = "https://www.artic.edu/iiif/2/{image_id}/full/843,/0/default.jpg"  # recommended pattern on their docs
 
 def fetch_public_domain_artworks(limit=2):
-	# Fetch more than we need, then filter down, because some hits can still have null image_id
 	params = {
 		"query[term][is_public_domain]": "true",
 		"limit": max(10, limit * 5),
