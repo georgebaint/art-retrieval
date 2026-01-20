@@ -20,7 +20,7 @@ WINDOW_WIDTH = 1000
 WINDOW_HEIGHT = 700
 FPS = 60
 
-N_RESULTS = 15
+N_RESULTS = 8
 
 
 def pil_to_surface(pil_img) -> pygame.Surface:
@@ -110,12 +110,12 @@ def main():
     )
 
     # Toggle group (mode selection)
-    toggle_rect = pygame.Rect(20, 70, 400, 30)
+    toggle_rect = pygame.Rect(20, 70, 500, 30)
     toggles = ToggleGroup(
         options=[
-            ToggleOption("Text only", "text"),
-            ToggleOption("Text + Vision", "hybrid"),
-            ToggleOption("Vision only", "vision"),
+            ToggleOption("Search by metadata", "text"),
+            ToggleOption("Describe an artpiece", "hybrid"),
+            ToggleOption("Search by image", "vision"),
         ],
         rect=toggle_rect,
         font=font_ui,

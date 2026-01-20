@@ -1,7 +1,6 @@
 import sys
 from pathlib import Path
 
-# Add the src directory to sys.path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from dataclasses import dataclass
@@ -16,10 +15,7 @@ from transformers import AutoModel, AutoProcessor
 
 from artic import build_iiif_url, download_iiif_image, create_artic_session
 
-
-# Default checkpoint – adjust if needed
 DEFAULT_CKPT = "google/siglip2-base-patch16-naflex"
-
 
 @dataclass
 class ImageEmbeddingConfig:
@@ -29,7 +25,7 @@ class ImageEmbeddingConfig:
     model_ckpt: str = DEFAULT_CKPT
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
     iiif_base_url: str = "https://www.artic.edu/iiif/2"
-    # you can add image size, batch size, etc. later
+    # maybe add more config options later
 
 
 def load_image_embedding_model(

@@ -63,7 +63,6 @@ def build_embedding_text(artwork: Dict[str, Any]) -> str:
     if desc_parts:
         bits.append(" ".join(desc_parts))
 
-    # Tags line – optional
     tags = set()
     for lst in (subject_titles, classification_titles, term_titles, material_titles):
         for t in lst:
@@ -77,7 +76,6 @@ def build_embedding_text(artwork: Dict[str, Any]) -> str:
     if not text:
         text = f"Artwork {artwork.get('id', '')}"
 
-    # Debug (optional – remove if too spammy)
     # print(text, "\n")
 
     return text
@@ -94,7 +92,6 @@ def embed_text(
     queries vs documents. Here we treat artwork descriptions as
     'documents', so we prepend the document prompt.
 
-    For queries, you should use a separate function with the query prompt.
     """
     text = text.strip()
     if not text:
