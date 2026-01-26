@@ -1,8 +1,3 @@
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 import io
@@ -13,7 +8,7 @@ import torch
 import torch.nn.functional as F
 from transformers import AutoModel, AutoProcessor
 
-from artic import build_iiif_url, download_iiif_image, create_artic_session
+from src.backend.artic import build_iiif_url, download_iiif_image, create_artic_session
 
 DEFAULT_CKPT = "google/siglip2-base-patch16-naflex"
 

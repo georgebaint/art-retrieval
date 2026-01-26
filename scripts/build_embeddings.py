@@ -7,17 +7,17 @@ import chromadb
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.embeddings.text_embedder import (
+from src.backend.embeddings.text_embedder import (
     TextEmbeddingConfig,
     load_text_embedding_model,
     embed_artwork_text,
 )
-from src.embeddings.image_embedder import (
+from src.backend.embeddings.image_embedder import (
     ImageEmbeddingConfig,
     load_image_embedding_model,
     embed_artwork_image,
 )
-from src.artic import create_artic_session
+from src.backend.artic import create_artic_session
 
 CLIENT_SAVE_PATH = "data/chromadb/test_full1"
 ARTWORKS_DIR_PATH = r"C:\Users\30698\Documents\art_project\full-api\artworks"
