@@ -1,135 +1,84 @@
 # Art Retrieval
 
-A multi-modal search system for discovering artworks from the Art Institute of Chicago collection using text and image-based queries.
+A semantic search system for the Art Institute of Chicago's artwork collection. Find artworks by describing them or searching visually using AI-powered embeddings.
 
-## Overview
+## What It Does
 
-This project combines advanced machine learning models with vector databases to enable intelligent art discovery. Users can search for artworks using:
-- **Text queries** - Describe what you're looking for
-- **Image queries** - Upload an image to find similar artworks
-- **Hybrid search** - Combine both text and image inputs
+Search artworks by text or image using transformer models. The system converts queries and artworks into embeddings, then finds the most similar matches using ChromaDB.
 
-## Features
+## Quick Start
 
-- 🎨 **Multi-modal Search** - Search by text, image, or both
-- 🔄 **Vector Embeddings** - Uses transformer models for semantic understanding
-- 🗄️ **ChromaDB Integration** - Fast similarity search with persistent storage
-- 🖼️ **IIIF Support** - Direct integration with Art Institute of Chicago's image server
-- 🎮 **Interactive GUI** - Pygame-based frontend for easy exploration
+### 1. Install
+
+```bash
+pip install -e .
+```
+
+### 2. Build Database
+
+```bash
+python scripts/build_embeddings.py
+```
+
+Creates text and image embeddings from artwork data and stores them in ChromaDB.
+
+### 3. Run GUI
+
+```bash
+python scripts/run_app.py
+```
+
+Or search programmatically:
+
+```python
+from src.backend.query import query_via_text, query_via_images
+
+# Text search
+results = query_via_text("impressionist landscape", n_results=10)
+
+# Image search
+results = query_via_images("abstract art", n_results=10)
+```
 
 ## Project Structure
 
 ```
-art-retrieval/
+src/
 ├── backend/
-│   ├── scripts/
-│   │   ├── build_embeddings.py    # Build embeddings from artwork data
-│   │   └── get_results.py         # Query the vector database
-│   └── src/
-│       ├── artic.py              # Art Institute API integration
-│       ├── api_calls.py           # API utilities
-│       ├── utils.py               # Helper functions
-│       └── embeddings/
-│           ├── chroma_db.py       # Database management
-│           ├── text_embedder.py   # Text embedding model
-│           └── image_embedder.py  # Image embedding model
+│   ├── artic.py              - Art Institute API & IIIF downloader
+│   ├── query.py              - Search functions
+│   ├── utils.py              - Utilities
+│   └── embeddings/
+│       ├── text_embedder.py   - BGE model
+│       └── image_embedder.py  - SigLIP2 model
 ├── frontend/
-│   ├── main.py                    # Main GUI application
-│   └── widgets.py                 # UI components
-└── data/
-    └── chromadb/                  # Vector database storage
+│   ├── app.py                - Pygame GUI
+│   ├── widgets.py            - UI components
+│   ├── image_manager.py      - Image handling
+│   ├── constants.py          - UI config
+│   └── utils.py              - Utilities
+
+scripts/
+├── build_embeddings.py       - Create embeddings database
+├── evaluate.py               - Evaluation metrics
+├── run_app.py                - Launch GUI
+
+data/chromadb/               - Vector databases
+notebooks/evaluation.ipynb   - Analysis notebook
 ```
 
-## Installation
+## Models
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd art-retrieval
-   ```
+- **Text**: `BAAI/bge-base-en-v1.5` (sentence-transformers)
+- **Image**: `google/siglip2-base-patch16-naflex` (transformers)
 
-2. **Install dependencies**
-   ```bash
-   pip install -e .
-   ```
+## Troubleshooting
 
-   Required packages:
-   - `torch` - Deep learning framework
-   - `transformers` - Pre-trained ML models
-   - `chromadb` - Vector database
-   - `Pillow` - Image processing
-   - `pygame` - GUI framework
-   - `requests` - HTTP client
+**Models download fails** - Check internet connection and disk space (500MB-2GB).
 
-## Usage
+**Database not found** - Run `build_embeddings.py` first.
 
-### Building Embeddings
-
-Generate embeddings for artwork data:
-
-```bash
-python backend/scripts/build_embeddings.py
-```
-
-This script:
-- Loads artwork data from JSON files
-- Creates text and image embeddings using transformer models
-- Stores embeddings in ChromaDB for fast retrieval
-
-### Running the GUI
-
-Launch the interactive search interface:
-
-```bash
-python frontend/main.py
-```
-
-**Controls:**
-- Type text queries to search by description
-- Upload or paint images to search by visual similarity
-- Toggle between search modes (text, vision, hybrid)
-- Browse results with artwork images and metadata
-
-### Querying Programmatically
-
-```python
-from backend.scripts.get_results import get_results
-
-# Text-based search
-results = get_results("landscape painting", mode="text", n_results=10)
-
-# Image-based search
-from PIL import Image
-img = Image.open("path/to/image.jpg")
-results = get_results("", query_image=img, mode="vision", n_results=10)
-```
-
-## Configuration
-
-Key settings are defined in the embedding models:
-
-- **TextEmbeddingConfig** - Text model hyperparameters
-- **ImageEmbeddingConfig** - Vision model hyperparameters
-- **CLIENT_SAVE_PATH** - Location for ChromaDB storage (default: `data/chromadb/test_full1`)
-
-## Testing
-
-Run tests to verify functionality:
-
-```bash
-pytest backend/tests/
-```
-
-## Data Source
-
-Artwork data is sourced from the [Art Institute of Chicago API](https://api.artic.edu/). Images are served via their IIIF image server for efficient delivery.
-
-## Requirements
-
-- Python 3.11+
-- CUDA-capable GPU (recommended for faster embedding generation)
-- 4+ GB RAM
-- Internet connection (for downloading models and images)
+**Pygame won't start** - Check display access. Use programmatic API on headless systems.
 
 ## License
 

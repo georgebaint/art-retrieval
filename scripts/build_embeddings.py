@@ -92,7 +92,6 @@ def main():
             "title": title,               # guaranteed non-None str
             "artist_title": artist_title, # guaranteed non-None str
         }
-        # -----------------------------------------------------------
 
         # Text embedding
         try:

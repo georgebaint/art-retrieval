@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.backend.query import query_via_text, query_via_images
 
 
-def load_artworks_sample(db_path: str, limit: int = 100) -> List[dict]:
+def load_artworks_sample(db_path: str, limit: int = 10000) -> List[dict]:
     """Load a sample of artworks (ids + metadata) from the text collection."""
     client = chromadb.PersistentClient(path=db_path)
     text_collection = client.get_collection("artwork_text_embeddings")
@@ -128,7 +128,6 @@ def evaluate_artist_retrieval(
             purity_sum += (same_artist / max_k) if max_k > 0 else 0.0
 
             # Artist-Recall@k: is there at least one same-artist item in top-k?
-            # Compute prefix hits efficiently
             prefix_hit = [False] * (max_k + 1)
             found = False
             for i in range(1, max_k + 1):
@@ -142,7 +141,7 @@ def evaluate_artist_retrieval(
 
         except Exception:
             error_count += 1
-            # Treat as miss for recall; purity adds 0
+            # Treat as miss for recall
             continue
 
     artist_recall = {k: (artist_hits_at_k[k] / total if total > 0 else 0.0) for k in range(1, max_k + 1)}
@@ -159,7 +158,7 @@ def print_recall_curve(name: str, curve: Dict[int, float]) -> None:
 
 def main():
     db_path = "data/chromadb/test_full1"
-    sample_limit = 50
+    sample_limit = 2000
     max_k = 10
 
     print("Loading artworks sample...")
